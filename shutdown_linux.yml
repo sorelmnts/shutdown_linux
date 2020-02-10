@@ -1,0 +1,26 @@
+---
+- name: Linux shutdown manager
+  hosts: all
+  remote_user: sore
+  become: true
+
+  tasks:
+    - name: Shutdown server
+      become: yes
+      shell: sleep 2 && /sbin/shutdown -c && /sbin/shutdown -h now
+      async: 1
+      poll: 0
+
+    - name: Store actual host to be used with local_action
+      set_fact:
+        original_host: "{{ ansible_host }}"
+
+    - name: Wait for ping loss
+      local_action: shell ping -q -c {{ ping_count }} -W {{ wait_time_before_ping_again }} {{ original_host }}
+      register: res
+      retries: "{{ retries }}"
+      until: ('100.0% packet loss' in res.stdout)
+      failed_when: ('100% packet loss' not in res.stdout)
+      changed_when: no
+
+
